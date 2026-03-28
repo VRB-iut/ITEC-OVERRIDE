@@ -10,6 +10,7 @@ model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
   password  String
+  image     String?  @default("https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png")
   battlesWon Int      @default(0)
   battlesLost Int     @default(0)
   teamId      Int?
@@ -24,4 +25,17 @@ model Team{
   colorHex  String  
   members   User[]
   createdAt DateTime @default(now())
+  wonBattles BattleLog[] @relation("WinnerRelation")
+  lostBattles BattleLog[] @relation("LoserRelation")
 } 
+
+model BattleLog {
+  id              Int      @id @default(autoincrement())
+  winnerTeamId    Int
+  loserTeamId     Int
+  winPercentage   Float
+  createdAt       DateTime @default(now())
+
+  winnerTeam      Team     @relation("WinnerRelation", fields: [winnerTeamId], references: [id])
+  loserTeam       Team     @relation("LoserRelation", fields: [loserTeamId], references: [id])
+}
