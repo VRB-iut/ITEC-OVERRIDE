@@ -24,4 +24,17 @@ model Team{
   colorHex  String  
   members   User[]
   createdAt DateTime @default(now())
+  wonBattles BattleLog[] @relation("WinnerRelation")
+  lostBattles BattleLog[] @relation("LoserRelation")
 } 
+
+model BattleLog {
+  id              Int      @id @default(autoincrement())
+  winnerTeamId    Int
+  loserTeamId     Int
+  winPercentage   Float
+  createdAt       DateTime @default(now())
+
+  winnerTeam      Team     @relation("WinnerRelation", fields: [winnerTeamId], references: [id])
+  loserTeam       Team     @relation("LoserRelation", fields: [loserTeamId], references: [id])
+}

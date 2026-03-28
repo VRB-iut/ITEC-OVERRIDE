@@ -113,6 +113,25 @@ app.delete('/delete-user', async (req, res) => {
 });
 
 
+app.delete('/delete-all-users', async (req, res) => {
+  try {
+    // deleteMany() fără niciun filtru (unde {}) șterge TOT din tabel
+    const result = await prisma.user.deleteMany({});
+
+    return res.json({ 
+      success: true, 
+      message: `Au fost șterși toți cei ${result.count} utilizatori din baza de date.` 
+    });
+
+  } catch (err) {
+    console.error("Eroare la ștergerea globală:", err);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Nu s-au putut șterge utilizatorii." 
+    });
+  }
+});
+
 
 app.post('/create-team', async (req, res) => {
   const { teamName, userId, password, colorHex } = req.body;
@@ -187,85 +206,125 @@ app.post('/join-team', async (req, res) => {
   }
 });
 
-app.post('/battle-won', async (req, res) => {
-  const { teamId } = req.body;
 
-  if (!teamId) {
-    return res.status(400).json({ success: false, message: "Lipsește teamId" });
+app.post('/battle-won', async (req, res) => {
+  const { winnerTeamId, loserTeamId, winnerUserId, loserUserId, percentage } = req.body;
+
+  if(percentage === undefined || percentage === null || percentage < 50.1) {
+    return res.status(400).json({ success: false, message: "Invalid percentage value" });
   }
 
-  const idEchipa = parseInt(teamId);
-
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       
-      const updateBatch = await tx.user.updateMany({
-        where: { 
-          teamId: idEchipa 
-        },
-        data: { 
-          battlesWon: { increment: 1 } 
-        }
-      });
+      if (winnerTeamId) {
+        await tx.user.updateMany({
+          where: { teamId: parseInt(winnerTeamId) },
+          data: { battlesWon: { increment: 1 } }
+        });
+      } else if (winnerUserId) {
+        await tx.user.update({
+          where: { id: parseInt(winnerUserId) },
+          data: { battlesWon: { increment: 1 } }
+        });
+      }
 
-      const team = await tx.team.findUnique({
-        where: { id: idEchipa },
-        include: { members: true }
-      });
+      if (loserTeamId) {
+        await tx.user.updateMany({
+          where: { teamId: parseInt(loserTeamId) },
+          data: { battlesLost: { increment: 1 } }
+        });
+      } else if (loserUserId) {
+        await tx.user.update({
+          where: { id: parseInt(loserUserId) },
+          data: { battlesLost: { increment: 1 } }
+        });
+      }
 
-      return { count: updateBatch.count, team };
+      if (winnerTeamId && loserTeamId) {
+        await tx.battleLog.create({
+          data: {
+            winnerTeamId: parseInt(winnerTeamId),
+            loserTeamId: parseInt(loserTeamId),
+            winPercentage: parseFloat(percentage || 0)
+          }
+        });
+      }
     });
 
     return res.json({ 
       success: true, 
-      message: `S-au actualizat ${result.count} membri.`,
-      team: result.team 
+      message: "Bătălia a fost înregistrată cu succes în profilul utilizatorilor!" 
     });
 
   } catch (err) {
-    console.error("Eroare la update:", err);
-    return res.status(500).json({ success: false, message: "Eroare la baza de date" });
+    console.error("Eroare la procesarea bătăliei:", err);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Eroare internă la actualizarea scorurilor." 
+    });
   }
 });
 
-app.post('/battle-lost', async (req, res) => {
-  const { teamId } = req.body;
+app.get('/leaderboard-teams', async (req, res) => {
+  try {
+    const teams = await prisma.team.findMany({
+      include: {
+        members: true
+      }
+    });
 
-  if (!teamId) {
-    return res.status(400).json({ success: false, message: "Lipsește teamId" });
+    const rankedTeams = teams.map(team => {
+      const totalWins = team.members.reduce((sum, member) => sum + member.battlesWon, 0);
+      return {
+        id: team.id,
+        name: team.name,
+        color: team.colorHex,
+        score: totalWins
+      };
+    }).sort((a, b) => b.score - a.score);
+    res.json(rankedTeams);
+  } catch (err) {
+    res.status(500).json({ success: false });
   }
+});
 
-  const idEchipa = parseInt(teamId);
+app.get('/team-history/:teamId', async (req, res) => {
+  const { teamId } = req.params;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      
-      const updateBatch = await tx.user.updateMany({
-        where: { 
-          teamId: idEchipa 
-        },
-        data: { 
-          battlesLost: { increment: 1 } 
-        }
-      });
-
-      const team = await tx.team.findUnique({
-        where: { id: idEchipa },
-        include: { members: true }
-      });
-
-      return { count: updateBatch.count, team };
+    const history = await prisma.battleLog.findMany({
+      where: {
+        OR: [
+          { winnerTeamId: parseInt(teamId) },
+          { loserTeamId: parseInt(teamId) }
+        ]
+      },
+      include: {
+        winnerTeam: { select: { name: true, colorHex: true } },
+        loserTeam: { select: { name: true, colorHex: true } }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
-    return res.json({ 
-      success: true, 
-      message: `S-au actualizat ${result.count} membri.`,
-      team: result.team 
+    const formattedHistory = history.map(log => {
+      const isWinner = log.winnerTeamId === parseInt(teamId);
+      return {
+        id: log.id,
+        date: log.createdAt,
+        result: isWinner ? 'VICTORIE' : 'ÎNFRÂNGERE',
+        opponent: isWinner ? log.loserTeam.name : log.winnerTeam.name,
+        opponentColor: isWinner ? log.loserTeam.colorHex : log.winnerTeam.colorHex,
+        percentage: log.winPercentage
+      };
     });
 
+    res.json({ success: true, history: formattedHistory });
   } catch (err) {
-    console.error("Eroare la update:", err);
-    return res.status(500).json({ success: false, message: "Eroare la baza de date" });
+    console.error(err);
+    res.status(500).json({ success: false, message: "Eroare la încărcarea istoricului" });
   }
 });
 
@@ -281,6 +340,33 @@ app.get('/users', async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.status(500).json({ success: false });
+  }
+});
+
+app.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      include: { team: true }
+    });
+
+    if (!user) return res.json({ success: false, message: "User not found" });
+
+
+    return res.json({
+      success: true,
+      user: {
+        username: user.username,
+        battlesWon: user.battlesWon,
+        battlesLost: user.battlesLost,
+        teamName: user.team?.name || null,
+        teamColor: user.team?.colorHex || null
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 });
 

@@ -1,13 +1,14 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import COLOR from '../var/COLOR';
 
 import LogOutButton from '../components/logOut';
+import ProfileContainer from '../components/profileContainer';
 
 export default function ProfileScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Profile Screen</Text>
+      <ProfileContainer />
       <LogOutButton />
     </View>
   );
