@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import CULORI from '../var/COLOR';
+import COLOR from '../var/COLOR';
 import IP from '../var/IP';
 
 export default function LoginScreen() {
@@ -92,6 +92,7 @@ const createAccountMessage = () => {
           <TextInput 
             style={[styles.nameInput, { marginTop: '10%' }]}
             placeholder='Username'
+            placeholderTextColor={'#eee'}
             value={username}
             onChangeText={setUsername}
             autoCapitalize='none'
@@ -99,6 +100,7 @@ const createAccountMessage = () => {
           <TextInput
             style={[styles.passwordInput, { marginTop: '10%' }]}
             placeholder='Password'
+            placeholderTextColor={'#eee'}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -122,6 +124,7 @@ const createAccountMessage = () => {
           <TextInput 
             style={[styles.nameInput, { marginTop: '5.5%' }]}
             placeholder=' Username'
+            placeholderTextColor={'#eee'}
             value={username}
             onChangeText={setUsername}
             autoCapitalize='none'
@@ -129,6 +132,7 @@ const createAccountMessage = () => {
           <TextInput
             style={[styles.passwordInput, { marginTop: '5.5%' }]}
             placeholder=' Password'
+            placeholderTextColor={'#eee'}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -137,6 +141,7 @@ const createAccountMessage = () => {
           <TextInput
             style={[styles.confirmPasswordInput, { marginTop: '5.5%' }]}
             placeholder=' Confirm Password'
+            placeholderTextColor={'#eee'}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -185,7 +190,7 @@ const createAccountMessage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: CULORI.background,
+    backgroundColor: COLOR.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -194,11 +199,14 @@ const styles = StyleSheet.create({
     height: "50%",
     borderWidth: 2,
     borderRadius: 24,
-    borderColor: CULORI.borderColor,
-    backgroundColor: CULORI.primary,
+    borderColor: COLOR.primary,
+    backgroundColor: COLOR.background,
+    shadowColor: COLOR.primary,
+    elevation: 5
   },
   logInText: {
     fontSize: 40,
+    color: COLOR.secondary,
     alignSelf: 'center',
     fontWeight: 'bold',
     marginTop: "10%",
@@ -208,24 +216,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderWidth: 1,
     borderBottomWidth: 1,
-    borderRadius: 18,
-    backgroundColor: 'white',
+    color: "#eee",
+    borderRadius: 9,
+    borderColor: COLOR.primary,
+    backgroundColor: '#fafafa07',
   },
   passwordInput: {
     marginTop: "10%",
     marginHorizontal: 20,
     borderWidth: 1,
     borderBottomWidth: 1,
-    borderRadius: 18,
-    backgroundColor: 'white',
+    borderRadius: 9,
+    borderColor: COLOR.primary,
+    backgroundColor: '#fafafa07',
   },
   confirmPasswordInput: {
     marginTop: "10%",
     marginHorizontal: 20,
     borderWidth: 1,
     borderBottomWidth: 1,
-    borderRadius: 18,
-    backgroundColor: 'white',
+    borderRadius: 9,
+    borderColor: COLOR.primary,
+    backgroundColor: '#fafafa07'
   },
   accountCreatedText: {
     position: 'absolute',
@@ -240,7 +252,7 @@ const styles = StyleSheet.create({
   },
   logInButtonText: {
     alignSelf: 'center',
-    backgroundColor: CULORI.secondary,
+    backgroundColor: COLOR.secondary,
     fontSize: 20,
     borderWidth: 1,
     borderRadius: 28,
@@ -255,7 +267,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   signUpText: {
-    color: CULORI.secondary,
+    color: COLOR.secondary,
     textDecorationLine: 'underline',
   },
 });

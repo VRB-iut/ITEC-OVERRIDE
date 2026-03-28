@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import COLOR from "../var/COLOR";
 import IP from "../var/IP";
 
@@ -49,6 +49,10 @@ export default function ProfileContainer() {
   };
 
   return (
+    <>
+    {loading ? (
+      <ActivityIndicator size="large" color={COLOR.primary} />
+    ) : (
     <View style={styles.cardContainer}>
       {/* Secțiunea Superioară: Header Profil */}
       <View style={styles.headerSection}>
@@ -79,6 +83,7 @@ export default function ProfileContainer() {
               <Text style={styles.actionButtonText}>JOIN TEAM</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              onPress={() => router.replace("/CreateTeam")}
               style={[
                 styles.actionButton,
                 { backgroundColor: "transparent", borderWidth: 1 },
@@ -112,6 +117,8 @@ export default function ProfileContainer() {
         </View>
       </View>
     </View>
+    )}
+  </>
   );
 }
 
