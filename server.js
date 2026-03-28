@@ -132,37 +132,64 @@ app.delete('/delete-all-users', async (req, res) => {
   }
 });
 
-
 app.post('/create-team', async (req, res) => {
   const { teamName, userId, password, colorHex } = req.body;
+  const normalizedTeamName = typeof teamName === 'string' ? teamName.trim() : '';
+  const normalizedPassword = typeof password === 'string' ? password.trim() : '';
+  const parsedUserId = parseInt(userId, 10);
 
-  if (!teamName || !userId || !password || !colorHex) {
+  if (!normalizedTeamName || !normalizedPassword || !colorHex || Number.isNaN(parsedUserId)) {
     return res.json({ success: false, message: "Missing teamName, userId, password, or colorHex" });
   }
 
   try {
-
     const result = await prisma.$transaction(async (tx) => {
-      
-    const newTeam = await tx.team.create({
-      data: {
-        name: teamName,
-        password: password,
-        colorHex: colorHex || "#AF52DE",
-      }
-    });
-    await tx.user.update({
-      where: { id: parseInt(userId) },
-      data: { teamId: newTeam.id }
-    });
-    return newTeam;
-  });
+      const existingUser = await tx.user.findUnique({
+        where: { id: parsedUserId }
+      });
 
-  return { success: true, teamId: result.id, teamName: result.name, colorHex: result.colorHex };
+      if (!existingUser) {
+        throw new Error('USER_NOT_FOUND');
+      }
+
+      // Creăm echipa
+      const newTeam = await tx.team.create({
+        data: {
+          name: normalizedTeamName,
+          password: normalizedPassword,
+          colorHex: colorHex || "#AF52DE",
+        }
+      });
+
+      // Actualizăm user-ul
+      await tx.user.update({
+        where: { id: parsedUserId },
+        data: { teamId: newTeam.id }
+      });
+
+      return newTeam;
+    });
+
+    // MODIFICAREA AICI: Folosim res.json() pentru a trimite datele inapoi la telefon
+    return res.json({ 
+      success: true, 
+      teamId: result.id, 
+      teamName: result.name, 
+      colorHex: result.colorHex 
+    });
 
   } catch (err) {
     console.log(err);
-    return res.status(500).json({ success: false, message: "Error creating team" });
+    if (err.message === 'USER_NOT_FOUND') {
+      return res.status(404).json({ success: false, message: 'Utilizatorul nu a fost găsit.' });
+    }
+
+    if (err.code === 'P2002') {
+      return res.status(409).json({ success: false, message: 'Numele echipei este deja folosit.' });
+    }
+
+    // Dacă numele echipei există deja, Prisma va arunca o eroare aici
+    return res.status(500).json({ success: false, message: "Echipa există deja sau eroare server." });
   }
 });
 

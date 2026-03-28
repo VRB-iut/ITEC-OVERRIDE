@@ -34,6 +34,8 @@ const fetchUserData = async () => {
         setData({
           username: result.user.username,
           WLratio: ratio,
+          wins: result.user.battlesWon,
+          losses: result.user.battlesLost,
           teamName: result.user.teamName,
           teamColor: result.user.teamColor
         });
@@ -56,11 +58,11 @@ const fetchUserData = async () => {
           <Text style={styles.teamName}>{data.teamName}</Text>
         ):(
           <View style={styles.noTeamContainer}>
-            <TouchableOpacity style={styles.noTeamButton}>
-              <Text style={styles.noTeamName}>Join Team</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.noTeamButton}>
+            <TouchableOpacity onPress={() => router.replace("/CreateTeam")} style={styles.noTeamButton}>
               <Text style={styles.noTeamName}>Create Team</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.replace("/JoinTeam")} style={styles.noTeamButton}>
+              <Text style={styles.noTeamName}>Join Team</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -129,10 +131,10 @@ const styles = StyleSheet.create({
     borderColor: COLOR.primary,
     backgroundColor: COLOR.primary,
     borderRadius: 20,
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
   },
   noTeamName: {
-    fontSize: 10,
+    fontSize: 13,
     color: 'white',
   },
   StatsContainer: {
