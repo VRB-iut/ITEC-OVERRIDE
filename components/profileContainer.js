@@ -2,12 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import COLOR from "../var/COLOR";
 import IP from "../var/IP";
 
 export default function ProfileContainer() {
   const [data, setData] = useState(null);
+  const [showQRMenu, setShowQRMenu] = useState(false); // State pentru meniul de QR
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -49,28 +50,75 @@ export default function ProfileContainer() {
   };
 
   return (
-    <>
-    {loading ? (
-      <ActivityIndicator size="large" color={COLOR.primary} />
-    ) : (
     <View style={styles.cardContainer}>
-      {/* Secțiunea Superioară: Header Profil */}
+      {/* HEADER: Nume și Butoane Acțiune */}
       <View style={styles.headerSection}>
         <View style={styles.textGroup}>
           <Text style={styles.label}>PROFIL UTILIZATOR</Text>
           <Text style={styles.usernameText} numberOfLines={1}>
-            {data?.username || "Incarcare..."}
+            {data?.username || "Încărcare..."}
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.replace("/LogInScreen")}
-          style={styles.logoutButton}
-        >
-          <Ionicons name="log-out-outline" size={22} color="#F44336" />
-        </TouchableOpacity>
+
+        <View style={styles.headerButtons}>
+          {/* SINGURUL BUTON DE QR */}
+          <TouchableOpacity
+            onPress={() => setShowQRMenu(!showQRMenu)}
+            style={[
+              styles.iconButton,
+              showQRMenu && { borderColor: COLOR.primary },
+            ]}
+          >
+            <Ionicons
+              name="qr-code-outline"
+              size={20}
+              color={showQRMenu ? COLOR.primary : "#fff"}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.replace("/LogInScreen")}
+            style={styles.iconButton}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#F44336" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Secțiunea de Mijloc: Echipa */}
+      {/* MENIUL CARE APARE DOAR LA APĂSARE */}
+      {showQRMenu && (
+        <View style={styles.qrMenuContainer}>
+          <TouchableOpacity
+            style={styles.qrMenuItem}
+            onPress={() => {
+              console.log("Scan");
+              setShowQRMenu(false);
+            }}
+          >
+            <Ionicons name="scan-outline" size={18} color={COLOR.primary} />
+            <Text style={styles.qrMenuText}>JOIN (SCAN QR)</Text>
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.qrMenuItem}
+            onPress={() => {
+              console.log("Invite");
+              setShowQRMenu(false);
+            }}
+          >
+            <Ionicons
+              name="share-social-outline"
+              size={18}
+              color={COLOR.primary}
+            />
+            <Text style={styles.qrMenuText}>INVITE (MY QR)</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* SECȚIUNE ECHIPĂ */}
       <View style={styles.teamSection}>
         {data?.teamName ? (
           <View style={[styles.teamBadge, { borderLeftColor: data.teamColor }]}>
@@ -79,23 +127,25 @@ export default function ProfileContainer() {
           </View>
         ) : (
           <View style={styles.noTeamRow}>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/JoinTeam")}
+            >
               <Text style={styles.actionButtonText}>JOIN TEAM</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.replace("/CreateTeam")}
-              style={[
-                styles.actionButton,
-                { backgroundColor: "transparent", borderWidth: 1 },
-              ]}
+              style={[styles.actionButton, styles.createOutline]}
+              onPress={() => router.push("/CreateTeam")}
             >
-              <Text style={styles.actionButtonText}>CREATE</Text>
+              <Text style={[styles.actionButtonText, { color: COLOR.primary }]}>
+                CREATE TEAM
+              </Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* Secțiunea Inferioară: Stats (Același stil cu cardul de meci) */}
+      {/* STATISTICI */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>WINS</Text>
@@ -112,120 +162,110 @@ export default function ProfileContainer() {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>W/L RATIO</Text>
+          <Text style={styles.statLabel}>W/L</Text>
           <Text style={styles.statValue}>{data?.WLratio ?? "0.00"}</Text>
         </View>
       </View>
     </View>
-    )}
-  </>
   );
 }
 
 const styles = StyleSheet.create({
   cardContainer: {
     position: "absolute",
-    top: 20,
-    backgroundColor: COLOR.borderColor, // Fundalul închis din Home
-    width: "90%",
+    top: 50,
+    backgroundColor: COLOR.borderColor,
+    width: "92%",
     alignSelf: "center",
-    marginTop: 20,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.05)",
-    // Umbră subtilă
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+    elevation: 10,
   },
   headerSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
+    alignItems: "center",
+    marginBottom: 10,
   },
   textGroup: { flex: 1 },
-  label: {
-    color: "#666",
-    fontSize: 10,
-    fontWeight: "bold",
-    letterSpacing: 1,
-  },
-  usernameText: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "900",
-    marginTop: 2,
-  },
-  logoutButton: {
+  label: { color: "#666", fontSize: 9, fontWeight: "bold", letterSpacing: 1 },
+  usernameText: { color: "#fff", fontSize: 26, fontWeight: "900" },
+  headerButtons: { flexDirection: "row", gap: 10 },
+  iconButton: {
     padding: 8,
-    backgroundColor: "rgba(244, 67, 54, 0.1)",
-    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
-  teamSection: {
+
+  // STILURI MENIU QR (Contextual)
+  qrMenuContainer: {
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 15,
+    padding: 5,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
+  qrMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    gap: 12,
+  },
+  qrMenuText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
+  menuDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    marginHorizontal: 10,
+  },
+
+  teamSection: { marginBottom: 20, marginTop: 5 },
   teamBadge: {
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     borderLeftWidth: 4,
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
-  teamLabel: {
-    color: "#666",
-    fontSize: 9,
-    fontWeight: "bold",
-  },
-  teamNameText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  noTeamRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  teamLabel: { color: "#666", fontSize: 8, fontWeight: "bold" },
+  teamNameText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  noTeamRow: { flexDirection: "row", gap: 10 },
   actionButton: {
     backgroundColor: COLOR.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
     flex: 1,
     alignItems: "center",
   },
-  actionButtonText: {
-    color: "#000000",
-    fontSize: 11,
-    fontWeight: "bold",
+  createOutline: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: COLOR.primary,
   },
+  actionButtonText: { color: "#000", fontSize: 10, fontWeight: "bold" },
+
   statsRow: {
     flexDirection: "row",
     backgroundColor: "rgba(0,0,0,0.2)",
-    borderRadius: 12,
-    paddingVertical: 15,
-    justifyContent: "space-around",
-    alignItems: "center",
+    borderRadius: 16,
+    paddingVertical: 12,
   },
-  statBox: {
-    alignItems: "center",
-    flex: 1,
-  },
+  statBox: { flex: 1, alignItems: "center" },
   statLabel: {
     color: "#555",
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "bold",
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  statValue: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  statValue: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   statDivider: {
     width: 1,
     height: "60%",
     backgroundColor: "rgba(255,255,255,0.05)",
+    alignSelf: "center",
   },
 });
