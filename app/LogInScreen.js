@@ -1,14 +1,21 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import COLOR from '../var/COLOR';
-import IP from '../var/IP';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import COLOR from "../var/COLOR";
+import IP from "../var/IP";
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [checkExisted, setCheckExisted] = useState(null);
   const [logIn, setLogIn] = useState(true);
   const [accountCreated, setAccountCreated] = useState(false);
@@ -22,166 +29,182 @@ export default function LoginScreen() {
       const normalizedPassword = password.trim();
 
       const response = await fetch(`http://${IP}:3000/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: normalizedUsername, password: normalizedPassword })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: normalizedUsername,
+          password: normalizedPassword,
+        }),
       });
-      
+
       const data = await response.json();
 
       if (data.success) {
-        await AsyncStorage.setItem('userId', String(data.userId));
-        router.replace('/Home');
+        await AsyncStorage.setItem("userId", String(data.userId));
+        router.replace("/Home");
       } else {
         setCheckExisted(false);
       }
     } catch (error) {
       console.log(error);
       setCheckExisted(false);
-    } 
+    }
   };
 
-const handleRegister = async () => {
-  console.log('Attempting to register with: ', username, password, confirmPassword);
-  try{
-    console.log('test');
-    const response = await fetch(`http://${IP}:3000/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, confirmPassword })
-    });
-    console.log("STATUS: ", response.status);
-    const data = await response.json();
-    console.log(data);
+  const handleRegister = async () => {
+    console.log(
+      "Attempting to register with: ",
+      username,
+      password,
+      confirmPassword,
+    );
+    try {
+      console.log("test");
+      const response = await fetch(`http://${IP}:3000/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, confirmPassword }),
+      });
+      console.log("STATUS: ", response.status);
+      const data = await response.json();
+      console.log(data);
 
-    if(data.success) {
-      setAccountCreated(true);
-      setLogIn(true);
-      setUsername('');
-      setPassword('');
-      setConfirmPassword('');
-      createAccountMessage();
-      setCheckExisted(null);
-    } else {
+      if (data.success) {
+        setAccountCreated(true);
+        setLogIn(true);
+        setUsername("");
+        setPassword("");
+        setConfirmPassword("");
+        createAccountMessage();
+        setCheckExisted(null);
+      } else {
+        setCheckExisted(false);
+      }
+    } catch (error) {
+      console.log(error);
       setCheckExisted(false);
     }
-  }catch ( error ) {
-    console.log(error);
-    setCheckExisted(false);
-  }
-};
+  };
 
-const createAccountMessage = () => {
-  opacity.setValue(1);
+  const createAccountMessage = () => {
+    opacity.setValue(1);
 
-  setTimeout(() => {
-    Animated.timing(opacity, {
-      toValue: 0,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start(() => setAccountCreated(false));
-  }, 1000);
-};
+    setTimeout(() => {
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }).start(() => setAccountCreated(false));
+    }, 1000);
+  };
 
   return (
     <View style={styles.container}>
       {/* Log In container */}
       {logIn ? (
-        <View style={ styles.containerLogIn}>
-          <Text style={styles.logInText}>Log In</Text>
-          <TextInput 
-            style={[styles.nameInput, { marginTop: '10%' }]}
-            placeholder='Username'
-            placeholderTextColor={'#eee'}
+        <View style={styles.containerLogIn}>
+          <Text style={styles.logInText}>WELCOME</Text>
+          <TextInput
+            style={[styles.nameInput, { marginTop: "10%" }]}
+            placeholder="Username"
+            placeholderTextColor={"#eee"}
             value={username}
             onChangeText={setUsername}
-            autoCapitalize='none'
+            autoCapitalize="none"
           />
           <TextInput
-            style={[styles.passwordInput, { marginTop: '10%' }]}
-            placeholder='Password'
-            placeholderTextColor={'#eee'}
+            style={[styles.passwordInput, { marginTop: "10%" }]}
+            placeholder="Password"
+            placeholderTextColor={"#eee"}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            autoCapitalize='none'
+            autoCapitalize="none"
           />
           {checkExisted === false && (
-            <Text style={{color: 'red', alignSelf: 'center', marginTop: "15%"}}>
+            <Text
+              style={{ color: "red", alignSelf: "center", marginTop: "15%" }}
+            >
               Invalid username or password
             </Text>
           )}
-
 
           <TouchableOpacity style={styles.logInButton} onPress={handleLogin}>
             <Text style={styles.logInButtonText}>Log In</Text>
           </TouchableOpacity>
-
         </View>
       ) : (
-        <View style={ styles.containerLogIn}>
-          <Text style={styles.logInText}>Sign Up</Text>
-          <TextInput 
-            style={[styles.nameInput, { marginTop: '5.5%' }]}
-            placeholder=' Username'
-            placeholderTextColor={'#eee'}
+        <View style={styles.containerLogIn}>
+          <Text style={styles.logInText}>WELCOME</Text>
+          <TextInput
+            style={[styles.nameInput, { marginTop: "5.5%" }]}
+            placeholder=" Username"
+            placeholderTextColor={"#eee"}
             value={username}
             onChangeText={setUsername}
-            autoCapitalize='none'
+            autoCapitalize="none"
           />
           <TextInput
-            style={[styles.passwordInput, { marginTop: '5.5%' }]}
-            placeholder=' Password'
-            placeholderTextColor={'#eee'}
+            style={[styles.passwordInput, { marginTop: "5.5%" }]}
+            placeholder=" Password"
+            placeholderTextColor={"#eee"}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            autoCapitalize='none'
+            autoCapitalize="none"
           />
           <TextInput
-            style={[styles.confirmPasswordInput, { marginTop: '5.5%' }]}
-            placeholder=' Confirm Password'
-            placeholderTextColor={'#eee'}
+            style={[styles.confirmPasswordInput, { marginTop: "5.5%" }]}
+            placeholder=" Confirm Password"
+            placeholderTextColor={"#eee"}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
-            autoCapitalize='none'
+            autoCapitalize="none"
           />
           {checkExisted === false && (
-            <Text style={{color: 'red', alignSelf: 'center', marginTop: "15%"}}>
+            <Text
+              style={{ color: "red", alignSelf: "center", marginTop: "15%" }}
+            >
               Invalid username or password
             </Text>
           )}
 
-            <TouchableOpacity style={styles.logInButton} onPress={handleRegister}>
-              <Text style={styles.logInButtonText}>Sign Up</Text>
-            </TouchableOpacity> 
-          </View>
+          <TouchableOpacity style={styles.logInButton} onPress={handleRegister}>
+            <Text style={styles.logInButtonText}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
-
       {/* Sign Up container */}
-      {logIn === true ?( 
+      {logIn === true ? (
         <View style={styles.containerSignUp}>
-          <Text style={{color: '#e6e6e6',}}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => {setLogIn(false), setCheckExisted(null)}}>
+          <Text style={{ color: "#e6e6e6" }}>Don't have an account?</Text>
+          <TouchableOpacity
+            onPress={() => {
+              (setLogIn(false), setCheckExisted(null));
+            }}
+          >
             <Text style={styles.signUpText}>Sign Up</Text>
           </TouchableOpacity>
         </View>
-        ) : (
+      ) : (
         <View style={styles.containerSignUp}>
-          <Text style={{color: '#e6e6e6',}}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => {setLogIn(true), setCheckExisted(null)}}>
+          <Text style={{ color: "#e6e6e6" }}>Already have an account?</Text>
+          <TouchableOpacity
+            onPress={() => {
+              (setLogIn(true), setCheckExisted(null));
+            }}
+          >
             <Text style={styles.signUpText}>Log in</Text>
           </TouchableOpacity>
         </View>
-        )
-      }
+      )}
 
       {accountCreated && (
-        <Animated.Text style={[styles.accountCreatedText, {opacity}]}>
+        <Animated.Text style={[styles.accountCreatedText, { opacity }]}>
           Account created successfully!
-        </Animated.Text >
+        </Animated.Text>
       )}
     </View>
   );
@@ -191,24 +214,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLOR.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   containerLogIn: {
-    width: '80%',
+    width: "80%",
     height: "50%",
     borderWidth: 2,
     borderRadius: 24,
     borderColor: COLOR.primary,
     backgroundColor: COLOR.background,
     shadowColor: COLOR.primary,
-    elevation: 5
+    elevation: 5,
   },
   logInText: {
     fontSize: 40,
     color: COLOR.secondary,
-    alignSelf: 'center',
-    fontWeight: 'bold',
+    alignSelf: "center",
+    fontWeight: "bold",
     marginTop: "10%",
   },
   nameInput: {
@@ -219,7 +242,7 @@ const styles = StyleSheet.create({
     color: "#eee",
     borderRadius: 9,
     borderColor: COLOR.primary,
-    backgroundColor: '#fafafa07',
+    backgroundColor: "#fafafa07",
   },
   passwordInput: {
     marginTop: "10%",
@@ -228,7 +251,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderRadius: 9,
     borderColor: COLOR.primary,
-    backgroundColor: '#fafafa07',
+    backgroundColor: "#fafafa07",
   },
   confirmPasswordInput: {
     marginTop: "10%",
@@ -237,37 +260,38 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderRadius: 9,
     borderColor: COLOR.primary,
-    backgroundColor: '#fafafa07'
+    backgroundColor: "#fafafa07",
   },
   accountCreatedText: {
-    position: 'absolute',
+    position: "absolute",
     marginTop: "65%",
-    color: 'green',
+    color: "green",
     fontSize: 16,
   },
   logInButton: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     paddingBottom: "10%",
   },
   logInButtonText: {
-    alignSelf: 'center',
-    backgroundColor: COLOR.secondary,
+    alignSelf: "center",
+    borderBottomWidth: 1,
+    borderColor: COLOR.primary,
     fontSize: 20,
-    borderWidth: 1,
     borderRadius: 28,
     paddingHorizontal: "25%",
     paddingVertical: "5%",
-    fontWeight: 'bold',
+    fontWeight: "bold",
+    color: COLOR.primary,
   },
   containerSignUp: {
-    position: 'absolute',
+    position: "absolute",
     bottom: "5%",
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 5,
   },
   signUpText: {
     color: COLOR.secondary,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
 });

@@ -2,14 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import COLOR from "../var/COLOR";
 import IP from "../var/IP";
 
 export default function ProfileContainer() {
   const [data, setData] = useState(null);
-  const [showQRMenu, setShowQRMenu] = useState(false); // State pentru meniul de QR
   const [loading, setLoading] = useState(true);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showQRMenu, setShowQRMenu] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -49,19 +51,20 @@ export default function ProfileContainer() {
     }
   };
 
+  const qrData = data?.teamName || "No Team Info";
+
   return (
     <View style={styles.cardContainer}>
       {/* HEADER: Nume și Butoane Acțiune */}
       <View style={styles.headerSection}>
         <View style={styles.textGroup}>
-          <Text style={styles.label}>PROFIL UTILIZATOR</Text>
+          <Text style={styles.label}>PROFILE</Text>
           <Text style={styles.usernameText} numberOfLines={1}>
             {data?.username || "Încărcare..."}
           </Text>
         </View>
 
         <View style={styles.headerButtons}>
-          {/* SINGURUL BUTON DE QR */}
           <TouchableOpacity
             onPress={() => setShowQRMenu(!showQRMenu)}
             style={[
@@ -85,36 +88,41 @@ export default function ProfileContainer() {
         </View>
       </View>
 
-      {/* MENIUL CARE APARE DOAR LA APĂSARE */}
+      {/* MENIU CONTEXTUAL QR */}
       {showQRMenu && (
         <View style={styles.qrMenuContainer}>
+          {/* Butonul de SCAN (Join) - Apare mereu */}
           <TouchableOpacity
             style={styles.qrMenuItem}
             onPress={() => {
-              console.log("Scan");
               setShowQRMenu(false);
+              router.push("/JoinScanner");
             }}
           >
             <Ionicons name="scan-outline" size={18} color={COLOR.primary} />
             <Text style={styles.qrMenuText}>JOIN (SCAN QR)</Text>
           </TouchableOpacity>
 
-          <View style={styles.menuDivider} />
-
-          <TouchableOpacity
-            style={styles.qrMenuItem}
-            onPress={() => {
-              console.log("Invite");
-              setShowQRMenu(false);
-            }}
-          >
-            <Ionicons
-              name="share-social-outline"
-              size={18}
-              color={COLOR.primary}
-            />
-            <Text style={styles.qrMenuText}>INVITE (MY QR)</Text>
-          </TouchableOpacity>
+          {/* Butonul de INVITE - Apare DOAR dacă data.teamName există */}
+          {data?.teamName && (
+            <>
+              <View style={styles.menuDivider} />
+              <TouchableOpacity
+                style={styles.qrMenuItem}
+                onPress={() => {
+                  setShowInviteModal(true);
+                  setShowQRMenu(false);
+                }}
+              >
+                <Ionicons
+                  name="share-social-outline"
+                  size={18}
+                  color={COLOR.primary}
+                />
+                <Text style={styles.qrMenuText}>INVITE (MY QR)</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
 
@@ -166,6 +174,37 @@ export default function ProfileContainer() {
           <Text style={styles.statValue}>{data?.WLratio ?? "0.00"}</Text>
         </View>
       </View>
+
+      {/* MODAL PENTRU INVITE (GENERARE QR) */}
+      <Modal
+        visible={showInviteModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowInviteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Invite in Your Team</Text>
+            <Text style={styles.modalSubTitle}>{data?.teamName}</Text>
+
+            <View style={styles.qrContainer}>
+              <QRCode
+                value={"data.teamName:data.teampassword"} // Poți personaliza structura datelor după cum ai nevoie
+                size={200}
+                color="white"
+                backgroundColor="transparent"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowInviteModal(false)}
+            >
+              <Text style={styles.closeButtonText}>BACK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -182,6 +221,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.05)",
     elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   headerSection: {
     flexDirection: "row",
@@ -200,8 +243,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
-
-  // STILURI MENIU QR (Contextual)
   qrMenuContainer: {
     backgroundColor: "rgba(0,0,0,0.3)",
     borderRadius: 15,
@@ -223,7 +264,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.05)",
     marginHorizontal: 10,
   },
-
   teamSection: { marginBottom: 20, marginTop: 5 },
   teamBadge: {
     padding: 12,
@@ -247,7 +287,6 @@ const styles = StyleSheet.create({
     borderColor: COLOR.primary,
   },
   actionButtonText: { color: "#000", fontSize: 10, fontWeight: "bold" },
-
   statsRow: {
     flexDirection: "row",
     backgroundColor: "rgba(0,0,0,0.2)",
@@ -267,5 +306,50 @@ const styles = StyleSheet.create({
     height: "60%",
     backgroundColor: "rgba(255,255,255,0.05)",
     alignSelf: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#1a1a1a",
+    padding: 30,
+    borderRadius: 30,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  modalTitle: {
+    color: "#666",
+    fontSize: 12,
+    fontWeight: "bold",
+    letterSpacing: 2,
+    marginBottom: 5,
+  },
+  modalSubTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    marginBottom: 25,
+  },
+  qrContainer: {
+    padding: 20,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 20,
+    marginBottom: 25,
+  },
+  closeButton: {
+    backgroundColor: COLOR.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 15,
+  },
+  closeButtonText: {
+    color: "#000",
+    fontWeight: "bold",
+    fontSize: 14,
   },
 });
