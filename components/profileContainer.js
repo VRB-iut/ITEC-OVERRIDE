@@ -1,17 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CameraView, useCameraPermissions } from "expo-camera"; // Import nou
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import QRCode from "react-native-qrcode-svg";
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import COLOR from "../var/COLOR";
 import IP from "../var/IP";
 
 export default function ProfileContainer() {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showQRMenu, setShowQRMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false); // State pentru a opri scanarea repetată
+  const [permission, requestPermission] = useCameraPermissions();
   const router = useRouter();
 
   useEffect(() => {
@@ -25,10 +33,8 @@ export default function ProfileContainer() {
         setLoading(false);
         return;
       }
-
       const response = await fetch(`http://${IP}:3000/user/${userId}`);
       const result = await response.json();
-
       if (result.success) {
         const wins = result.user.battlesWon || 0;
         const losses = result.user.battlesLost || 0;
@@ -36,8 +42,8 @@ export default function ProfileContainer() {
           losses === 0 ? wins.toFixed(2) : (wins / losses).toFixed(2);
 
         setData({
-          wins: wins,
-          losses: losses,
+          wins,
+          losses,
           username: result.user.username,
           WLratio: ratio,
           teamName: result.user.teamName,
@@ -51,165 +57,174 @@ export default function ProfileContainer() {
     }
   };
 
-  const qrData = data?.teamName || "No Team Info";
+  const handleBarCodeScanned = async ({ data: qrRawData }) => {
+    if (scanning) return;
+    setScanning(true);
+
+    try {
+      // Formatul asteptat: teamName:password
+      const [teamName, password] = qrRawData.split(":");
+      const userId = await AsyncStorage.getItem("userId");
+
+      if (!teamName || !password) {
+        throw new Error("Format QR invalid (lipseste : )");
+      }
+
+      const response = await fetch(`http://${IP}:3000/join-team`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamName, password, userId }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        Alert.alert("Succes", `Te-ai alăturat echipei ${result.teamName}!`);
+        setShowQRMenu(false);
+        fetchUserData(); // Refresh date profil
+      } else {
+        Alert.alert("Eroare", result.message || "Nu s-a putut face join.");
+      }
+    } catch (error) {
+      Alert.alert("Eroare Scanare", "Codul QR nu este valid pentru echipe.");
+    } finally {
+      // Asteptam putin inainte de a permite o alta scanare
+      setTimeout(() => setScanning(false), 2000);
+    }
+  };
+
+  const toggleCamera = async () => {
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) {
+        Alert.alert("Permisiune refuzată", "Avem nevoie de acces la cameră.");
+        return;
+      }
+    }
+    setShowQRMenu(!showQRMenu);
+  };
 
   return (
     <View style={styles.cardContainer}>
-      {/* HEADER: Nume și Butoane Acțiune */}
-      <View style={styles.headerSection}>
-        <View style={styles.textGroup}>
-          <Text style={styles.label}>PROFILE</Text>
-          <Text style={styles.usernameText} numberOfLines={1}>
-            {data?.username || "Încărcare..."}
-          </Text>
-        </View>
-
-        <View style={styles.headerButtons}>
-          <TouchableOpacity
-            onPress={() => setShowQRMenu(!showQRMenu)}
-            style={[
-              styles.iconButton,
-              showQRMenu && { borderColor: COLOR.primary },
-            ]}
-          >
-            <Ionicons
-              name="qr-code-outline"
-              size={20}
-              color={showQRMenu ? COLOR.primary : "#fff"}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.replace("/LogInScreen")}
-            style={styles.iconButton}
-          >
-            <Ionicons name="log-out-outline" size={20} color="#F44336" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* MENIU CONTEXTUAL QR */}
-      {showQRMenu && (
-        <View style={styles.qrMenuContainer}>
-          {/* Butonul de SCAN (Join) - Apare mereu */}
-          <TouchableOpacity
-            style={styles.qrMenuItem}
-            onPress={() => {
-              setShowQRMenu(false);
-              router.push("/JoinScanner");
-            }}
-          >
-            <Ionicons name="scan-outline" size={18} color={COLOR.primary} />
-            <Text style={styles.qrMenuText}>JOIN (SCAN QR)</Text>
-          </TouchableOpacity>
-
-          {/* Butonul de INVITE - Apare DOAR dacă data.teamName există */}
-          {data?.teamName && (
-            <>
-              <View style={styles.menuDivider} />
-              <TouchableOpacity
-                style={styles.qrMenuItem}
-                onPress={() => {
-                  setShowInviteModal(true);
-                  setShowQRMenu(false);
-                }}
-              >
-                <Ionicons
-                  name="share-social-outline"
-                  size={18}
-                  color={COLOR.primary}
-                />
-                <Text style={styles.qrMenuText}>INVITE (MY QR)</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      )}
-
-      {/* SECȚIUNE ECHIPĂ */}
-      <View style={styles.teamSection}>
-        {data?.teamName ? (
-          <View style={[styles.teamBadge, { borderLeftColor: data.teamColor }]}>
-            <Text style={styles.teamLabel}>ECHIPĂ ACTIVĂ</Text>
-            <Text style={styles.teamNameText}>{data.teamName}</Text>
-          </View>
-        ) : (
-          <View style={styles.noTeamRow}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push("/JoinTeam")}
-            >
-              <Text style={styles.actionButtonText}>JOIN TEAM</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.createOutline]}
-              onPress={() => router.push("/CreateTeam")}
-            >
-              <Text style={[styles.actionButtonText, { color: COLOR.primary }]}>
-                CREATE TEAM
+      {loading ? (
+        <ActivityIndicator size="large" color={COLOR.primary} />
+      ) : (
+        <>
+          <View style={styles.headerSection}>
+            <View style={styles.textGroup}>
+              <Text style={styles.label}>PROFIL UTILIZATOR</Text>
+              <Text style={styles.usernameText} numberOfLines={1}>
+                {data?.username || "Încărcare..."}
               </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* STATISTICI */}
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>WINS</Text>
-          <Text style={[styles.statValue, { color: "#4CAF50" }]}>
-            {data?.wins ?? 0}
-          </Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>LOSSES</Text>
-          <Text style={[styles.statValue, { color: "#F44336" }]}>
-            {data?.losses ?? 0}
-          </Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>W/L</Text>
-          <Text style={styles.statValue}>{data?.WLratio ?? "0.00"}</Text>
-        </View>
-      </View>
-
-      {/* MODAL PENTRU INVITE (GENERARE QR) */}
-      <Modal
-        visible={showInviteModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowInviteModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Invite in Your Team</Text>
-            <Text style={styles.modalSubTitle}>{data?.teamName}</Text>
-
-            <View style={styles.qrContainer}>
-              <QRCode
-                value={"data.teamName:data.teampassword"} // Poți personaliza structura datelor după cum ai nevoie
-                size={200}
-                color="white"
-                backgroundColor="transparent"
-              />
             </View>
 
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowInviteModal(false)}
-            >
-              <Text style={styles.closeButtonText}>BACK</Text>
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                onPress={toggleCamera}
+                style={[
+                  styles.iconButton,
+                  showQRMenu && { borderColor: COLOR.primary },
+                ]}
+              >
+                <Ionicons
+                  name={showQRMenu ? "close-outline" : "qr-code-outline"}
+                  size={20}
+                  color={showQRMenu ? COLOR.primary : "#fff"}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.replace("/LogInScreen")}
+                style={styles.iconButton}
+              >
+                <Ionicons name="log-out-outline" size={20} color="#F44336" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
+
+          {showQRMenu && (
+            <View style={styles.qrMenuContainer}>
+              {data?.teamName ? (
+                <View style={styles.qrMenuItem}>
+                  <Text style={styles.qrMenuText}>
+                    Ai deja o echipă activă!
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.cameraWrapper}>
+                  <CameraView
+                    style={styles.camera}
+                    onBarcodeScanned={
+                      scanning ? undefined : handleBarCodeScanned
+                    }
+                    barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* SECȚIUNE ECHIPĂ */}
+          <View style={styles.teamSection}>
+            {data?.teamName ? (
+              <View
+                style={[styles.teamBadge, { borderLeftColor: data.teamColor }]}
+              >
+                <Text style={styles.teamLabel}>ECHIPĂ ACTIVĂ</Text>
+                <Text style={styles.teamNameText}>{data.teamName}</Text>
+              </View>
+            ) : (
+              <View style={styles.noTeamRow}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push("/JoinTeam")}
+                >
+                  <Text style={styles.actionButtonText}>JOIN TEAM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.createOutline]}
+                  onPress={() => router.push("/CreateTeam")}
+                >
+                  <Text
+                    style={[styles.actionButtonText, { color: COLOR.primary }]}
+                  >
+                    CREATE TEAM
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* STATISTICI (Wins/Losses) */}
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>WINS</Text>
+              <Text style={[styles.statValue, { color: "#4CAF50" }]}>
+                {data?.wins ?? 0}
+              </Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>LOSSES</Text>
+              <Text style={[styles.statValue, { color: "#F44336" }]}>
+                {data?.losses ?? 0}
+              </Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>W/L</Text>
+              <Text style={styles.statValue}>{data?.WLratio ?? "0.00"}</Text>
+            </View>
+          </View>
+        </>
+      )}
     </View>
   );
 }
 
+// STILURI ADĂUGATE/MODIFICATE
 const styles = StyleSheet.create({
+  // ... stilurile tale existente rămân la fel ...
   cardContainer: {
     position: "absolute",
     top: 50,
@@ -244,25 +259,40 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
   },
   qrMenuContainer: {
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 15,
-    padding: 5,
+    height: 200, // Înălțime fixă pentru zona camerei
+    backgroundColor: "#000",
+    borderRadius: 20,
     marginBottom: 20,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: COLOR.primary,
   },
-  qrMenuItem: {
-    flexDirection: "row",
+  cameraWrapper: {
+    flex: 1,
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    gap: 12,
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
-  qrMenuText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
-  menuDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    marginHorizontal: 10,
+  scanText: {
+    color: "#fff",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    padding: 5,
+    borderRadius: 5,
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  qrMenuText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 90,
   },
   teamSection: { marginBottom: 20, marginTop: 5 },
   teamBadge: {
@@ -306,50 +336,5 @@ const styles = StyleSheet.create({
     height: "60%",
     backgroundColor: "rgba(255,255,255,0.05)",
     alignSelf: "center",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "80%",
-    backgroundColor: "#1a1a1a",
-    padding: 30,
-    borderRadius: 30,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  modalTitle: {
-    color: "#666",
-    fontSize: 12,
-    fontWeight: "bold",
-    letterSpacing: 2,
-    marginBottom: 5,
-  },
-  modalSubTitle: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 25,
-  },
-  qrContainer: {
-    padding: 20,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 20,
-    marginBottom: 25,
-  },
-  closeButton: {
-    backgroundColor: COLOR.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 15,
-  },
-  closeButtonText: {
-    color: "#000",
-    fontWeight: "bold",
-    fontSize: 14,
   },
 });

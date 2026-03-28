@@ -100,7 +100,7 @@ const HomePage = () => {
     <View style={{ flex: 1, backgroundColor: COLOR.background }}>
       <View style={styles.customHeader}>
         <Text style={styles.welcomeText}>
-          BINE AI VENIT, {data.user?.username?.toUpperCase() || "UTILIZATOR"}
+          WELCOME, {data.user?.username?.toUpperCase() || "UTILIZATOR"}
         </Text>
         <Text style={styles.statusText}>
           {data.team ? data.team.name : "No team"}
@@ -130,7 +130,7 @@ const HomePage = () => {
           <View style={styles.noTeamBox}>
             <Ionicons name="stats-chart-outline" size={50} color="#444" />
             <Text style={{ color: "white", marginTop: 10 }}>
-              Nicio bătălie înregistrată.
+              No match history available.
             </Text>
           </View>
         }

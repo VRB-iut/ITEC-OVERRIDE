@@ -8,7 +8,7 @@ export default function MatchCard({
   percentage,
   opponentColor,
 }) {
-  const isWinner = result === "VICTORIE";
+  const isWinner = result === "VICTORY";
   const formattedDate = new Date(date).toLocaleDateString("ro-RO");
 
   return (
@@ -38,7 +38,7 @@ export default function MatchCard({
           },
         ]}
       >
-        <Text style={styles.opponentLabel}>ADVERSAR</Text>
+        <Text style={styles.opponentLabel}>Opponent team</Text>
         <Text style={styles.opponentName} numberOfLines={1}>
           {opponent}
         </Text>
