@@ -187,6 +187,87 @@ app.post('/join-team', async (req, res) => {
   }
 });
 
+app.post('/battle-won', async (req, res) => {
+  const { teamId } = req.body;
+
+  if (!teamId) {
+    return res.status(400).json({ success: false, message: "Lipsește teamId" });
+  }
+
+  const idEchipa = parseInt(teamId);
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      
+      const updateBatch = await tx.user.updateMany({
+        where: { 
+          teamId: idEchipa 
+        },
+        data: { 
+          battlesWon: { increment: 1 } 
+        }
+      });
+
+      const team = await tx.team.findUnique({
+        where: { id: idEchipa },
+        include: { members: true }
+      });
+
+      return { count: updateBatch.count, team };
+    });
+
+    return res.json({ 
+      success: true, 
+      message: `S-au actualizat ${result.count} membri.`,
+      team: result.team 
+    });
+
+  } catch (err) {
+    console.error("Eroare la update:", err);
+    return res.status(500).json({ success: false, message: "Eroare la baza de date" });
+  }
+});
+
+app.post('/battle-lost', async (req, res) => {
+  const { teamId } = req.body;
+
+  if (!teamId) {
+    return res.status(400).json({ success: false, message: "Lipsește teamId" });
+  }
+
+  const idEchipa = parseInt(teamId);
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      
+      const updateBatch = await tx.user.updateMany({
+        where: { 
+          teamId: idEchipa 
+        },
+        data: { 
+          battlesLost: { increment: 1 } 
+        }
+      });
+
+      const team = await tx.team.findUnique({
+        where: { id: idEchipa },
+        include: { members: true }
+      });
+
+      return { count: updateBatch.count, team };
+    });
+
+    return res.json({ 
+      success: true, 
+      message: `S-au actualizat ${result.count} membri.`,
+      team: result.team 
+    });
+
+  } catch (err) {
+    console.error("Eroare la update:", err);
+    return res.status(500).json({ success: false, message: "Eroare la baza de date" });
+  }
+});
 
 app.get('/users', async (req, res) => {
   try {
@@ -211,6 +292,8 @@ app.get('/teams', async (req, res) => {
           select: {
             id: true,
             username: true,
+            battlesWon: true,
+            battlesLost: true,
           }
         }
       }
