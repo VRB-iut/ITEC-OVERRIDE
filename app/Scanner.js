@@ -1,14 +1,42 @@
 import { ViroARSceneNavigator } from "@reactvision/react-viro";
-import { useCallback, useMemo, useState } from "react";
+// 1. Am adăugat useEffect aici sus
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import DrawingCanvas from "../components/ar-scenes/DrawingCanvas";
 import OpeningScene from "../components/ar-scenes/OpeningScene";
 import COLOR from "../var/COLOR";
+// 2. Trebuie să importăm IP-ul serverului vostru!
+import IP from "../var/IP";
 
 export default function Scanner() {
   const [showCanvas, setShowCanvas] = useState(false);
   const [currentPoster, setCurrentPoster] = useState(null);
   const [savedDrawings, setSavedDrawings] = useState({});
+
+  // --- LOGICĂ NOUĂ MULTIPLAYER ---
+
+  // Funcția care descarcă desenele tuturor de pe server
+  const fetchDrawings = async () => {
+    try {
+      const response = await fetch(`http://${IP}:3000/drawings`);
+      const data = await response.json();
+      if (data.success && data.drawings) {
+        setSavedDrawings(data.drawings);
+      }
+    } catch (error) {
+      console.log("Eroare la descărcarea desenelor:", error);
+    }
+  };
+
+  // Se execută automat când intri pe camera de scanare
+  useEffect(() => {
+    fetchDrawings();
+
+    const interval = setInterval(fetchDrawings, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // -------------------------------
 
   const handlePosterFound = useCallback(
     (name) => {
@@ -94,12 +122,29 @@ export default function Scanner() {
             posterName={currentPoster}
             initialStrokes={savedDrawings[currentPoster]}
             onCancel={() => setShowCanvas(false)}
-            onSave={(normalizedStrokes) => {
+            // --- MODIFICARE AICI: Trimitem la server la apăsarea butonului ---
+            onSave={async (normalizedStrokes) => {
+              // 1. Afișăm instant pe telefonul tău ca să nu aștepți (Optimistic UI)
               setSavedDrawings((prev) => ({
                 ...prev,
                 [currentPoster]: normalizedStrokes,
               }));
               setShowCanvas(false);
+
+              // 2. Trimitem desenul "pe ascuns" către server
+              try {
+                await fetch(`http://${IP}:3000/drawings`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    posterName: currentPoster,
+                    strokes: normalizedStrokes,
+                  }),
+                });
+                console.log("Desen salvat pe server cu succes!");
+              } catch (error) {
+                console.log("Eroare la salvarea pe server:", error);
+              }
             }}
           />
         </View>
@@ -108,7 +153,6 @@ export default function Scanner() {
   );
 }
 
-// Stilurile rămân neschimbate (le ai deja corecte)
 const CAPTURE_SIZE = 76;
 const INNER_SIZE = 58;
 const styles = StyleSheet.create({
