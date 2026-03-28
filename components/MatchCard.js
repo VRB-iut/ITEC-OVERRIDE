@@ -72,8 +72,4 @@ const styles = StyleSheet.create({
   },
   opponentLabel: { color: "#666", fontSize: 9, fontWeight: "bold" },
   opponentName: { color: "#fff", fontWeight: "bold", fontSize: 15 },
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> bf572aa6db8d3365f6a9a3bbae6267e51edd3286

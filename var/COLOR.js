@@ -5,10 +5,8 @@ const COLOR = {
   secondary: "#F96E46",
   backgroundCard: "#2A2A2A",
   auriu: "gold",
+  win: "#4CAF50",
+  loss: "#F44336",
 };
 
-<<<<<<< HEAD
 export default COLOR;
-=======
-export default COLOR;
->>>>>>> bf572aa6db8d3365f6a9a3bbae6267e51edd3286

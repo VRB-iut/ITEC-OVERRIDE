@@ -1,10 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import COLOR from '../var/COLOR';
-import IP from '../var/IP';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import COLOR from "../var/COLOR";
+import IP from "../var/IP";
 
 export default function ProfileContainer() {
   const [data, setData] = useState(null);
@@ -15,9 +15,9 @@ export default function ProfileContainer() {
     fetchUserData();
   }, []);
 
-const fetchUserData = async () => {
+  const fetchUserData = async () => {
     try {
-      const userId = await AsyncStorage.getItem('userId');
+      const userId = await AsyncStorage.getItem("userId");
       if (!userId) {
         setLoading(false);
         return;
@@ -29,15 +29,16 @@ const fetchUserData = async () => {
       if (result.success) {
         const wins = result.user.battlesWon || 0;
         const losses = result.user.battlesLost || 0;
-        const ratio = (wins / (losses || 1)).toFixed(2);
+        const ratio =
+          losses === 0 ? wins.toFixed(2) : (wins / losses).toFixed(2);
 
         setData({
+          wins: wins,
+          losses: losses,
           username: result.user.username,
           WLratio: ratio,
-          wins: result.user.battlesWon,
-          losses: result.user.battlesLost,
           teamName: result.user.teamName,
-          teamColor: result.user.teamColor
+          teamColor: result.user.teamColor || COLOR.primary,
         });
       }
       setLoading(false);
@@ -45,104 +46,179 @@ const fetchUserData = async () => {
       console.error("Eroare la fetch profil:", error);
       setLoading(false);
     }
-};
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.ProfileInfoContainer}>
-        <View style={{ width: '90%'}}>
-        <Text style={styles.numeUser}>{data?.username || 'User'}</Text>
-        <View style={styles.teamContainer}>
-        <Text style={styles.team}>Team</Text>
-        {data?.teamName ? ( 
-          <Text style={styles.teamName}>{data.teamName}</Text>
-        ):(
-          <View style={styles.noTeamContainer}>
-            <TouchableOpacity onPress={() => router.replace("/CreateTeam")} style={styles.noTeamButton}>
-              <Text style={styles.noTeamName}>Create Team</Text>
+    <View style={styles.cardContainer}>
+      {/* Secțiunea Superioară: Header Profil */}
+      <View style={styles.headerSection}>
+        <View style={styles.textGroup}>
+          <Text style={styles.label}>PROFIL UTILIZATOR</Text>
+          <Text style={styles.usernameText} numberOfLines={1}>
+            {data?.username || "Incarcare..."}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => router.replace("/LogInScreen")}
+          style={styles.logoutButton}
+        >
+          <Ionicons name="log-out-outline" size={22} color="#F44336" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Secțiunea de Mijloc: Echipa */}
+      <View style={styles.teamSection}>
+        {data?.teamName ? (
+          <View style={[styles.teamBadge, { borderLeftColor: data.teamColor }]}>
+            <Text style={styles.teamLabel}>ECHIPĂ ACTIVĂ</Text>
+            <Text style={styles.teamNameText}>{data.teamName}</Text>
+          </View>
+        ) : (
+          <View style={styles.noTeamRow}>
+            <TouchableOpacity style={styles.actionButton}>
+              <Text style={styles.actionButtonText}>JOIN TEAM</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.replace("/JoinTeam")} style={styles.noTeamButton}>
-              <Text style={styles.noTeamName}>Join Team</Text>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                { backgroundColor: "transparent", borderWidth: 1 },
+              ]}
+            >
+              <Text style={styles.actionButtonText}>CREATE</Text>
             </TouchableOpacity>
           </View>
         )}
-        </View>
-        </View>
-      <TouchableOpacity style={{marginVertical: 10}} onPress={() => router.replace("/LogInScreen")}>
-        <Ionicons name="log-in" size={24} color={COLOR.primary} />
-      </TouchableOpacity>
       </View>
-      <View style={{borderWidth : 1, borderColor: COLOR.borderColor, width: '100%'}}></View>
-      <View style={styles.StatsContainer}>
-        <Text style={styles.WLratio}>W: {data?.wins || 'N/A'}</Text>
-        <Text style={styles.WLratio}>L: {data?.losses || 'N/A'}</Text>
-        <Text style={styles.WLratio}>W/L: {data?.WLratio > 0 ? data.WLratio : 'N/A'}</Text>
+
+      {/* Secțiunea Inferioară: Stats (Același stil cu cardul de meci) */}
+      <View style={styles.statsRow}>
+        <View style={styles.statBox}>
+          <Text style={styles.statLabel}>WINS</Text>
+          <Text style={[styles.statValue, { color: "#4CAF50" }]}>
+            {data?.wins ?? 0}
+          </Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statBox}>
+          <Text style={styles.statLabel}>LOSSES</Text>
+          <Text style={[styles.statValue, { color: "#F44336" }]}>
+            {data?.losses ?? 0}
+          </Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statBox}>
+          <Text style={styles.statLabel}>W/L RATIO</Text>
+          <Text style={styles.statValue}>{data?.WLratio ?? "0.00"}</Text>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: '10%',
+  cardContainer: {
+    position: "absolute",
+    top: 20,
+    backgroundColor: COLOR.borderColor, // Fundalul închis din Home
+    width: "90%",
+    alignSelf: "center",
+    marginTop: 20,
     padding: 20,
-    borderWidth: 2,
-    borderColor: COLOR.borderColor,
-    borderRadius: 20,
-    width: '90%',
-    alignItems: 'center',
-  },
-  ProfileInfoContainer: {
-    backgroundColor: COLOR.background,
-    flexDirection: 'row',
-    alignSelf: 'flex-start',
-    gap: 15,
-  },
-  numeUser: {
-    fontSize: 40,
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  WLratio: {
-    fontSize: 18,
-    color: 'white',
-  },
-  team: {
-    fontSize: 12,
-    color: '#b5b5b5',
-  },
-  teamName: {
-    fontSize: 16,
-    color: 'white',
-  },
-  teamContainer: {
-    gap: 5,
-    marginBottom: '5%',
-  },
-  noTeamContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    gap: 5,
-  },
-  noTeamButton: {
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLOR.primary,
+    borderColor: "rgba(255,255,255,0.05)",
+    // Umbră subtilă
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  headerSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  textGroup: { flex: 1 },
+  label: {
+    color: "#666",
+    fontSize: 10,
+    fontWeight: "bold",
+    letterSpacing: 1,
+  },
+  usernameText: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "900",
+    marginTop: 2,
+  },
+  logoutButton: {
+    padding: 8,
+    backgroundColor: "rgba(244, 67, 54, 0.1)",
+    borderRadius: 10,
+  },
+  teamSection: {
+    marginBottom: 20,
+  },
+  teamBadge: {
+    padding: 12,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+  },
+  teamLabel: {
+    color: "#666",
+    fontSize: 9,
+    fontWeight: "bold",
+  },
+  teamNameText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  noTeamRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  actionButton: {
     backgroundColor: COLOR.primary,
-    borderRadius: 20,
-    paddingHorizontal: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: "center",
   },
-  noTeamName: {
-    fontSize: 13,
-    color: 'white',
+  actionButtonText: {
+    color: "#000000",
+    fontSize: 11,
+    fontWeight: "bold",
   },
-  StatsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 10,
-  }
+  statsRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.2)",
+    borderRadius: 12,
+    paddingVertical: 15,
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  statBox: {
+    alignItems: "center",
+    flex: 1,
+  },
+  statLabel: {
+    color: "#555",
+    fontSize: 9,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  statValue: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  statDivider: {
+    width: 1,
+    height: "60%",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
 });
-
