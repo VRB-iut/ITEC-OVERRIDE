@@ -7,4 +7,8 @@ const COLOR = {
   auriu: "gold",
 };
 
+<<<<<<< HEAD
 export default COLOR;
+=======
+export default COLOR;
+>>>>>>> bf572aa6db8d3365f6a9a3bbae6267e51edd3286

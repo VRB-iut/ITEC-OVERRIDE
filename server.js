@@ -113,6 +113,25 @@ app.delete('/delete-user', async (req, res) => {
 });
 
 
+app.delete('/delete-all-users', async (req, res) => {
+  try {
+    // deleteMany() fără niciun filtru (unde {}) șterge TOT din tabel
+    const result = await prisma.user.deleteMany({});
+
+    return res.json({ 
+      success: true, 
+      message: `Au fost șterși toți cei ${result.count} utilizatori din baza de date.` 
+    });
+
+  } catch (err) {
+    console.error("Eroare la ștergerea globală:", err);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Nu s-au putut șterge utilizatorii." 
+    });
+  }
+});
+
 
 app.post('/create-team', async (req, res) => {
   const { teamName, userId, password, colorHex } = req.body;
@@ -321,6 +340,33 @@ app.get('/users', async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.status(500).json({ success: false });
+  }
+});
+
+app.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      include: { team: true }
+    });
+
+    if (!user) return res.json({ success: false, message: "User not found" });
+
+
+    return res.json({
+      success: true,
+      user: {
+        username: user.username,
+        battlesWon: user.battlesWon,
+        battlesLost: user.battlesLost,
+        teamName: user.team?.name || null,
+        teamColor: user.team?.colorHex || null
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 });
 
