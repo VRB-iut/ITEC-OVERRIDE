@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import CULORI from '../var/CULORI';
+import CULORI from '../var/COLOR';
 import IP from '../var/IP';
 
 export default function LoginScreen() {
@@ -121,14 +121,14 @@ const createAccountMessage = () => {
           <Text style={styles.logInText}>Sign Up</Text>
           <TextInput 
             style={[styles.nameInput, { marginTop: '5.5%' }]}
-            placeholder='Username'
+            placeholder=' Username'
             value={username}
             onChangeText={setUsername}
             autoCapitalize='none'
           />
           <TextInput
             style={[styles.passwordInput, { marginTop: '5.5%' }]}
-            placeholder='Password'
+            placeholder=' Password'
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -136,7 +136,7 @@ const createAccountMessage = () => {
           />
           <TextInput
             style={[styles.confirmPasswordInput, { marginTop: '5.5%' }]}
-            placeholder='Confirm Password'
+            placeholder=' Confirm Password'
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 24,
     borderColor: CULORI.borderColor,
-    backgroundColor: '#fff',
+    backgroundColor: CULORI.primary,
   },
   logInText: {
     fontSize: 40,
@@ -209,6 +209,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 1,
     borderRadius: 18,
+    backgroundColor: 'white',
   },
   passwordInput: {
     marginTop: "10%",
@@ -216,6 +217,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 1,
     borderRadius: 18,
+    backgroundColor: 'white',
   },
   confirmPasswordInput: {
     marginTop: "10%",
@@ -223,6 +225,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 1,
     borderRadius: 18,
+    backgroundColor: 'white',
   },
   accountCreatedText: {
     position: 'absolute',
@@ -237,7 +240,7 @@ const styles = StyleSheet.create({
   },
   logInButtonText: {
     alignSelf: 'center',
-    backgroundColor: '#c8f0ff',
+    backgroundColor: CULORI.secondary,
     fontSize: 20,
     borderWidth: 1,
     borderRadius: 28,
@@ -252,7 +255,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   signUpText: {
-    color: 'blue',
+    color: CULORI.secondary,
     textDecorationLine: 'underline',
   },
 });

@@ -9,7 +9,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
 }
 
 model User {
@@ -17,5 +16,17 @@ model User {
   username  String   @unique
   password  String
   battlesWon Int      @default(0)
+  battlesLost Int     @default(0)
+  teamId      Int?
+  team        Team?    @relation(fields: [teamId], references: [id])
   createdAt DateTime @default(now())
 }
+
+model Team{
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  password  String
+  colorHex  String
+  members   User[]
+  createdAt DateTime @default(now())
+} 

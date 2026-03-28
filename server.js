@@ -112,6 +112,82 @@ app.delete('/delete-user', async (req, res) => {
   }
 });
 
+
+
+app.post('/create-team', async (req, res) => {
+  const { teamName, userId, password, colorHex } = req.body;
+
+  if (!teamName || !userId || !password || !colorHex) {
+    return res.json({ success: false, message: "Missing teamName, userId, password, or colorHex" });
+  }
+
+  try {
+
+    const result = await prisma.$transaction(async (tx) => {
+      
+    const newTeam = await tx.team.create({
+      data: {
+        name: teamName,
+        password: password,
+        colorHex: colorHex || "#AF52DE",
+      }
+    });
+    await tx.user.update({
+      where: { id: parseInt(userId) },
+      data: { teamId: newTeam.id }
+    });
+    return newTeam;
+  });
+
+  return { success: true, teamId: result.id, teamName: result.name, colorHex: result.colorHex };
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ success: false, message: "Error creating team" });
+  }
+});
+
+app.post('/join-team', async (req, res) => {
+  const { teamName, password, userId } = req.body;
+
+  if (!teamName || !password || !userId) {
+    return res.status(400).json({ success: false, message: "Missing teamName, password or userId" });
+  }
+
+  try {
+    const team = await prisma.team.findUnique({
+      where: { name: teamName }
+    });
+
+    if (!team) {
+      return res.json({ success: false, message: "Team not found" });
+    }
+
+    
+    if (team.password !== password) {
+      return res.json({ success: false, message: "Incorrect password" });
+    }
+
+    
+    await prisma.user.update({
+      where: { id: parseInt(userId) },
+      data: { teamId: team.id }
+    });
+
+    return res.json({ 
+      success: true, 
+      teamId: team.id, 
+      teamName: team.name,
+      colorHex: team.colorHex 
+    });
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ success: false, message: "Error joining team" });
+  }
+});
+
+
 app.get('/users', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
@@ -123,6 +199,29 @@ app.get('/users', async (req, res) => {
     return res.json({ success: true, users });
   } catch (err) {
     console.log(err);
+    return res.status(500).json({ success: false });
+  }
+});
+
+app.get('/teams', async (req, res) => {
+  try {
+    const teams = await prisma.team.findMany({
+      include: {
+        members: {
+          select: {
+            id: true,
+            username: true,
+          }
+        }
+      }
+    });
+
+    return res.json({ 
+      success: true, 
+      teams: teams
+    });
+  } catch (err) {
+    console.error("Eroare la preluarea echipelor:", err);
     return res.status(500).json({ success: false });
   }
 });
