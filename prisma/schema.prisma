@@ -40,3 +40,10 @@ model BattleLog {
   winnerTeam      Team     @relation("WinnerRelation", fields: [winnerTeamId], references: [id])
   loserTeam       Team     @relation("LoserRelation", fields: [loserTeamId], references: [id])
 }
+
+model PosterDrawing {
+  id         Int      @id @default(autoincrement())
+  posterName String   @unique 
+  strokes    String  
+  updatedAt  DateTime @updatedAt
+}
