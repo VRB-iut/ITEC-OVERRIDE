@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import COLOR from "../var/COLOR";
 import IP from "../var/IP";
 
@@ -47,6 +48,8 @@ export default function ProfileContainer() {
           username: result.user.username,
           WLratio: ratio,
           teamName: result.user.teamName,
+          teamPassword: result.user.teamPassword,
+          teamInviteCode: result.user.teamInviteCode,
           teamColor: result.user.teamColor || COLOR.primary,
         });
       }
@@ -62,19 +65,36 @@ export default function ProfileContainer() {
     setScanning(true);
 
     try {
-      // Formatul asteptat: teamName:password
-      const [teamName, password] = qrRawData.split(":");
       const userId = await AsyncStorage.getItem("userId");
+      let response;
 
-      if (!teamName || !password) {
-        throw new Error("Format QR invalid (lipseste : )");
+      // Format nou: OVRTEAM:<inviteCode>
+      if (typeof qrRawData === "string" && qrRawData.startsWith("OVRTEAM:")) {
+        const inviteCode = qrRawData.slice("OVRTEAM:".length).trim();
+
+        if (!inviteCode) {
+          throw new Error("Invite code lipsa");
+        }
+
+        response = await fetch(`http://${IP}:3000/join-team-invite`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inviteCode, userId }),
+        });
+      } else {
+        // Fallback pentru QR-urile vechi: teamName:password
+        const [teamName, password] = String(qrRawData).split(":");
+
+        if (!teamName || !password) {
+          throw new Error("Format QR invalid");
+        }
+
+        response = await fetch(`http://${IP}:3000/join-team`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teamName, password, userId }),
+        });
       }
-
-      const response = await fetch(`http://${IP}:3000/join-team`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamName, password, userId }),
-      });
 
       const result = await response.json();
 
@@ -94,7 +114,7 @@ export default function ProfileContainer() {
   };
 
   const toggleCamera = async () => {
-    if (!permission?.granted) {
+    if (!data?.teamName && !permission?.granted) {
       const { granted } = await requestPermission();
       if (!granted) {
         Alert.alert("Permisiune refuzată", "Avem nevoie de acces la cameră.");
@@ -145,10 +165,22 @@ export default function ProfileContainer() {
           {showQRMenu && (
             <View style={styles.qrMenuContainer}>
               {data?.teamName ? (
-                <View style={styles.qrMenuItem}>
-                  <Text style={styles.qrMenuText}>
-                    Ai deja o echipă activă!
-                  </Text>
+                <View style={styles.qrDisplay}>
+                  <Text style={styles.qrTitle}>COD INVITATIE ECHIPA</Text>
+                  <View style={styles.qrWrapper}>
+                    <QRCode
+                      value={
+                        data.teamInviteCode
+                          ? `OVRTEAM:${data.teamInviteCode}`
+                          : `${data.teamName}:${data.teamPassword}`
+                      }
+                      size={140}
+                      color="black"
+                      backgroundColor="white"
+                    />
+                  </View>
+                  <Text style={styles.qrTeamName}>{data.teamName}</Text>
+                  <Text style={styles.qrMenuText}>Scaneaza pentru join la echipa</Text>
                 </View>
               ) : (
                 <View style={styles.cameraWrapper}>
@@ -266,9 +298,33 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: COLOR.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  qrDisplay: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  qrTitle: {
+    color: COLOR.primary,
+    fontSize: 10,
+    fontWeight: "bold",
+    letterSpacing: 1,
+  },
+  qrWrapper: {
+    backgroundColor: "#fff",
+    padding: 8,
+    borderRadius: 10,
+  },
+  qrTeamName: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   cameraWrapper: {
     flex: 1,
+    width: "100%",
   },
   camera: {
     flex: 1,
@@ -289,10 +345,10 @@ const styles = StyleSheet.create({
   },
   qrMenuText: {
     color: "#fff",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "bold",
     textAlign: "center",
-    marginTop: 90,
+    marginTop: 2,
   },
   teamSection: { marginBottom: 20, marginTop: 5 },
   teamBadge: {

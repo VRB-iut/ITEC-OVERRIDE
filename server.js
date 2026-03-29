@@ -2,6 +2,7 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import prismaPkg from "@prisma/client";
 import bcrypt from "bcrypt";
 import cors from "cors";
+import crypto from "crypto";
 import "dotenv/config";
 import express from "express";
 
@@ -13,6 +14,23 @@ const prisma = new PrismaClient({ adapter });
 
 app.use(cors());
 app.use(express.json());
+
+const createInviteCode = () =>
+  `OVR-${crypto.randomBytes(5).toString("hex").toUpperCase()}`;
+
+const generateUniqueInviteCode = async (dbClient) => {
+  while (true) {
+    const inviteCode = createInviteCode();
+    const existing = await dbClient.team.findUnique({
+      where: { inviteCode },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return inviteCode;
+    }
+  }
+};
 
 app.post("/register", async (req, res) => {
   try {
@@ -158,10 +176,12 @@ app.post("/create-team", async (req, res) => {
       }
 
       // Creăm echipa
+      const inviteCode = await generateUniqueInviteCode(tx);
       const newTeam = await tx.team.create({
         data: {
           name: normalizedTeamName,
           password: normalizedPassword,
+          inviteCode,
           colorHex: colorHex || "#AF52DE",
         },
       });
@@ -180,6 +200,7 @@ app.post("/create-team", async (req, res) => {
       success: true,
       teamId: result.id,
       teamName: result.name,
+      inviteCode: result.inviteCode,
       colorHex: result.colorHex,
     });
   } catch (err) {
@@ -243,6 +264,45 @@ app.post("/join-team", async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Error joining team" });
+  }
+});
+
+app.post("/join-team-invite", async (req, res) => {
+  const { inviteCode, userId } = req.body;
+
+  if (!inviteCode || !userId) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing inviteCode or userId",
+    });
+  }
+
+  try {
+    const team = await prisma.team.findUnique({
+      where: { inviteCode },
+    });
+
+    if (!team) {
+      return res.json({ success: false, message: "Invalid invite code" });
+    }
+
+    await prisma.user.update({
+      where: { id: parseInt(userId, 10) },
+      data: { teamId: team.id },
+    });
+
+    return res.json({
+      success: true,
+      teamId: team.id,
+      teamName: team.name,
+      inviteCode: team.inviteCode,
+      colorHex: team.colorHex,
+    });
+  } catch (err) {
+    console.log(err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Error joining team by invite" });
   }
 });
 
@@ -403,6 +463,17 @@ app.get("/user/:userId", async (req, res) => {
 
     if (!user) return res.json({ success: false, message: "User not found" });
 
+    let teamInviteCode = user.team?.inviteCode || null;
+
+    // Backfill pentru echipe create înainte de inviteCode.
+    if (user.team && !teamInviteCode) {
+      teamInviteCode = await generateUniqueInviteCode(prisma);
+      await prisma.team.update({
+        where: { id: user.team.id },
+        data: { inviteCode: teamInviteCode },
+      });
+    }
+
     return res.json({
       success: true,
       user: {
@@ -410,6 +481,8 @@ app.get("/user/:userId", async (req, res) => {
         battlesWon: user.battlesWon,
         battlesLost: user.battlesLost,
         teamName: user.team?.name || null,
+        teamPassword: user.team?.password || null,
+        teamInviteCode,
         teamColor: user.team?.colorHex || null,
       },
     });
