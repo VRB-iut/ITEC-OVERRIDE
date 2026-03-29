@@ -12,37 +12,24 @@ const app = express();
 const prisma = new PrismaClient({ adapter });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" })); // Am păstrat doar varianta cu limită mare pentru desene
+
+// --- AUTH ROUTES ---
 
 app.post("/register", async (req, res) => {
   try {
     const { username, password, confirmPassword } = req.body;
-
-    if (!username || !password || !confirmPassword) {
+    if (!username || !password || !confirmPassword)
       return res.json({ success: false });
-    }
+    if (password !== confirmPassword) return res.json({ success: false });
 
-    if (password !== confirmPassword) {
-      return res.json({ success: false });
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { username },
-    });
-
-    if (existingUser) {
-      return res.json({ success: false });
-    }
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) return res.json({ success: false });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     await prisma.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-      },
+      data: { username, password: hashedPassword },
     });
-
     return res.json({ success: true });
   } catch (err) {
     console.log(err);
@@ -53,55 +40,32 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
+    if (!username || !password) return res.json({ success: false });
 
-    if (!username || !password) {
-      return res.json({ success: false });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
-
-    if (!user) {
-      return res.json({ success: false });
-    }
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) return res.json({ success: false });
 
     const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) return res.json({ success: false });
 
-    if (!passwordMatch) {
-      return res.json({ success: false });
-    }
-
-    return res.json({
-      success: true,
-      userId: user.id,
-    });
+    return res.json({ success: true, userId: user.id });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ success: false });
   }
 });
 
+// --- ADMIN / UTILS ---
+
 app.delete("/delete-user", async (req, res) => {
   try {
     const { username } = req.body;
-
-    if (!username) {
+    if (!username)
       return res.json({ success: false, message: "No username provided" });
-    }
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) return res.json({ success: false, message: "User not found" });
 
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
-
-    if (!user) {
-      return res.json({ success: false, message: "User not found" });
-    }
-
-    await prisma.user.delete({
-      where: { username },
-    });
-
+    await prisma.user.delete({ where: { username } });
     return res.json({ success: true });
   } catch (err) {
     console.log(err);
@@ -111,32 +75,24 @@ app.delete("/delete-user", async (req, res) => {
 
 app.delete("/delete-all-users", async (req, res) => {
   try {
-    // deleteMany() fără niciun filtru (unde {}) șterge TOT din tabel
     const result = await prisma.user.deleteMany({});
-
     return res.json({
       success: true,
-      message: `Au fost șterși toți cei ${result.count} utilizatori din baza de date.`,
+      message: `Au fost șterși toți cei ${result.count} utilizatori.`,
     });
   } catch (err) {
     console.error("Eroare la ștergerea globală:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Nu s-au putut șterge utilizatorii.",
-    });
+    return res.status(500).json({ success: false });
   }
 });
 
+// --- TEAMS ---
+
 app.post("/create-team", async (req, res) => {
   const { teamName, userId, password, colorHex } = req.body;
-
   if (!teamName || !userId || !password || !colorHex) {
-    return res.json({
-      success: false,
-      message: "Missing teamName, userId, password, or colorHex",
-    });
+    return res.json({ success: false, message: "Missing team data" });
   }
-
   try {
     const result = await prisma.$transaction(async (tx) => {
       const newTeam = await tx.team.create({
@@ -152,49 +108,32 @@ app.post("/create-team", async (req, res) => {
       });
       return newTeam;
     });
-
-    return {
+    return res.json({
       success: true,
       teamId: result.id,
       teamName: result.name,
       colorHex: result.colorHex,
-    };
+    });
   } catch (err) {
     console.log(err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Error creating team" });
+    return res.status(500).json({ success: false });
   }
 });
 
 app.post("/join-team", async (req, res) => {
   const { teamName, password, userId } = req.body;
-
-  if (!teamName || !password || !userId) {
-    return res.status(400).json({
-      success: false,
-      message: "Missing teamName, password or userId",
-    });
-  }
-
+  if (!teamName || !password || !userId)
+    return res.status(400).json({ success: false });
   try {
-    const team = await prisma.team.findUnique({
-      where: { name: teamName },
-    });
-
-    if (!team) {
-      return res.json({ success: false, message: "Team not found" });
-    }
-
-    if (team.password !== password) {
+    const team = await prisma.team.findUnique({ where: { name: teamName } });
+    if (!team) return res.json({ success: false, message: "Team not found" });
+    if (team.password !== password)
       return res.json({ success: false, message: "Incorrect password" });
-    }
 
     await prisma.user.update({
       where: { id: parseInt(userId) },
       data: { teamId: team.id },
     });
-
     return res.json({
       success: true,
       teamId: team.id,
@@ -203,21 +142,17 @@ app.post("/join-team", async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Error joining team" });
+    return res.status(500).json({ success: false });
   }
 });
+
+// --- BATTLE SYSTEM (Toată logica ta originală) ---
 
 app.post("/battle-won", async (req, res) => {
   const { winnerTeamId, loserTeamId, winnerUserId, loserUserId, percentage } =
     req.body;
-
-  if (percentage === undefined || percentage === null || percentage < 50.1) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid percentage value" });
-  }
+  if (percentage === undefined || percentage < 50.1)
+    return res.status(400).json({ success: false });
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -255,42 +190,25 @@ app.post("/battle-won", async (req, res) => {
         });
       }
     });
-
-    return res.json({
-      success: true,
-      message:
-        "Bătălia a fost înregistrată cu succes în profilul utilizatorilor!",
-    });
+    return res.json({ success: true });
   } catch (err) {
-    console.error("Eroare la procesarea bătăliei:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Eroare internă la actualizarea scorurilor.",
-    });
+    console.error(err);
+    return res.status(500).json({ success: false });
   }
 });
 
+// --- LEADERBOARDS & HISTORY ---
+
 app.get("/leaderboard-teams", async (req, res) => {
   try {
-    const teams = await prisma.team.findMany({
-      include: {
-        members: true,
-      },
-    });
-
+    const teams = await prisma.team.findMany({ include: { members: true } });
     const rankedTeams = teams
-      .map((team) => {
-        const totalWins = team.members.reduce(
-          (sum, member) => sum + member.battlesWon,
-          0,
-        );
-        return {
-          id: team.id,
-          name: team.name,
-          color: team.colorHex,
-          score: totalWins,
-        };
-      })
+      .map((team) => ({
+        id: team.id,
+        name: team.name,
+        color: team.colorHex,
+        score: team.members.reduce((sum, member) => sum + member.battlesWon, 0),
+      }))
       .sort((a, b) => b.score - a.score);
     res.json(rankedTeams);
   } catch (err) {
@@ -299,27 +217,22 @@ app.get("/leaderboard-teams", async (req, res) => {
 });
 
 app.get("/team-history/:teamId", async (req, res) => {
-  const { teamId } = req.params;
-
   try {
     const history = await prisma.battleLog.findMany({
       where: {
         OR: [
-          { winnerTeamId: parseInt(teamId) },
-          { loserTeamId: parseInt(teamId) },
+          { winnerTeamId: parseInt(req.params.teamId) },
+          { loserTeamId: parseInt(req.params.teamId) },
         ],
       },
       include: {
         winnerTeam: { select: { name: true, colorHex: true } },
         loserTeam: { select: { name: true, colorHex: true } },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
-
     const formattedHistory = history.map((log) => {
-      const isWinner = log.winnerTeamId === parseInt(teamId);
+      const isWinner = log.winnerTeamId === parseInt(req.params.teamId);
       return {
         id: log.id,
         date: log.createdAt,
@@ -331,41 +244,32 @@ app.get("/team-history/:teamId", async (req, res) => {
         percentage: log.winPercentage,
       };
     });
-
     res.json({ success: true, history: formattedHistory });
   } catch (err) {
-    console.error(err);
-    res
-      .status(500)
-      .json({ success: false, message: "Eroare la încărcarea istoricului" });
+    res.status(500).json({ success: false });
   }
 });
+
+// --- USER & TEAM FETCH ---
 
 app.get("/users", async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-      },
+      select: { id: true, username: true },
     });
     return res.json({ success: true, users });
   } catch (err) {
-    console.log(err);
     return res.status(500).json({ success: false });
   }
 });
 
 app.get("/user/:userId", async (req, res) => {
   try {
-    const { userId } = req.params;
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
+      where: { id: parseInt(req.params.userId) },
       include: { team: true },
     });
-
-    if (!user) return res.json({ success: false, message: "User not found" });
-
+    if (!user) return res.json({ success: false });
     return res.json({
       success: true,
       user: {
@@ -377,52 +281,37 @@ app.get("/user/:userId", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false });
   }
 });
 
 app.get("/teams", async (req, res) => {
   try {
-    const teams = await prisma.team.findMany({
-      include: {
-        members: {
-          select: {
-            id: true,
-            username: true,
-            battlesWon: true,
-            battlesLost: true,
-          },
-        },
-      },
-    });
-
-    return res.json({
-      success: true,
-      teams: teams,
-    });
+    const teams = await prisma.team.findMany({ include: { members: true } });
+    return res.json({ success: true, teams });
   } catch (err) {
-    console.error("Eroare la preluarea echipelor:", err);
     return res.status(500).json({ success: false });
   }
 });
 
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
-});
+// --- MULTIPLAYER DRAWINGS (Aici am reparat duplicarea) ---
 
-// 1. Luăm toate desenele din baza de date
 app.get("/drawings", async (req, res) => {
   try {
+    if (!prisma.posterDrawing)
+      return res
+        .status(500)
+        .json({ success: false, error: "Database model missing" });
     const drawings = await prisma.posterDrawing.findMany();
-
-    // Transformăm datele din DB într-un obiect ușor de citit de telefon
     const formattedDrawings = {};
     drawings.forEach((d) => {
-      // JSON.parse transformă textul înapoi în vector de coordonate
-      formattedDrawings[d.posterName] = JSON.parse(d.strokes);
+      try {
+        formattedDrawings[d.posterName] =
+          typeof d.strokes === "string" ? JSON.parse(d.strokes) : d.strokes;
+      } catch (e) {
+        formattedDrawings[d.posterName] = [];
+      }
     });
-
     res.json({ success: true, drawings: formattedDrawings });
   } catch (err) {
     console.error("Eroare la get drawings:", err);
@@ -430,27 +319,26 @@ app.get("/drawings", async (req, res) => {
   }
 });
 
-// 2. Salvăm un desen nou pe un poster
 app.post("/drawings", async (req, res) => {
   try {
     const { posterName, strokes } = req.body;
+    if (!posterName || !strokes)
+      return res.status(400).json({ success: false });
 
-    if (!posterName || !strokes) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Date incomplete" });
-    }
-
-    // "upsert" e magic: Dacă posterul are deja un desen, îl suprascrie. Dacă nu, creează unul nou.
     await prisma.posterDrawing.upsert({
       where: { posterName: posterName },
-      update: { strokes: JSON.stringify(strokes) }, // Transformăm vectorul în text pentru SQLite
+      update: { strokes: JSON.stringify(strokes) },
       create: { posterName: posterName, strokes: JSON.stringify(strokes) },
     });
-
+    console.log(`[SERVER] Desen salvat: ${posterName}`);
     res.json({ success: true });
   } catch (err) {
     console.error("Eroare la save drawing:", err);
     res.status(500).json({ success: false });
   }
+});
+
+// --- SINGURUL LISTEN DIN FIȘIER ---
+app.listen(3000, () => {
+  console.log("Server is running on port 3000");
 });

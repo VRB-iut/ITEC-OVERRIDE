@@ -8,8 +8,15 @@
     "scheme": "itecoverride",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
+    "assetBundlePatterns": ["**/*", "assets/afise/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
+        "NSPhotoLibraryAddUsageDescription": "Allow $(PRODUCT_NAME) to save photos",
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to use your camera",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use your microphone"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +31,12 @@
     },
     "plugins": [
       "expo-router",
-      ["@reactvision/react-viro", { "androidX86": true }],
+      [
+        "@reactvision/react-viro",
+        {
+          "androidX86": true
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -34,6 +46,12 @@
           "backgroundColor": "#ffffff"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9a5e2b3d-0127-4bc4-bdec-dfd2c0e8c5bf"
+      }
+    }
   }
 }

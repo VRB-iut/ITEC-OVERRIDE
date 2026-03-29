@@ -122,18 +122,21 @@ export default function Scanner() {
             posterName={currentPoster}
             initialStrokes={savedDrawings[currentPoster]}
             onCancel={() => setShowCanvas(false)}
-            // --- MODIFICARE AICI: Trimitem la server la apăsarea butonului ---
             onSave={async (normalizedStrokes) => {
-              // 1. Afișăm instant pe telefonul tău ca să nu aștepți (Optimistic UI)
+              // 1. Update local (Optimistic UI)
+              if (!normalizedStrokes || normalizedStrokes.length === 0) {
+                setShowCanvas(false);
+                return;
+              }
               setSavedDrawings((prev) => ({
                 ...prev,
                 [currentPoster]: normalizedStrokes,
               }));
               setShowCanvas(false);
 
-              // 2. Trimitem desenul "pe ascuns" către server
+              // 2. Trimitem la server
               try {
-                await fetch(`http://${IP}:3000/drawings`, {
+                const response = await fetch(`http://${IP}:3000/drawings`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -141,9 +144,14 @@ export default function Scanner() {
                     strokes: normalizedStrokes,
                   }),
                 });
-                console.log("Desen salvat pe server cu succes!");
+
+                if (response.ok) {
+                  console.log("Desen salvat pe server cu succes");
+                } else {
+                  console.log("!!!!Serverul a refuzat salvarea!!!! :(((((");
+                }
               } catch (error) {
-                console.log("Eroare la salvarea pe server:", error);
+                console.log("Eroare rețea la salvarea pe server:", error);
               }
             }}
           />
