@@ -37,11 +37,15 @@ app.post("/register", async (req, res) => {
     const { username, password, confirmPassword } = req.body;
 
     if (!username || !password || !confirmPassword) {
-      return res.json({ success: false });
+      return res.json({ success: false, message: "All fields are required" });
     }
 
     if (password !== confirmPassword) {
-      return res.json({ success: false });
+      return res.json({ success: false, message: "Passwords do not match" });
+    }else if (password.length < 3) {
+      return res.json({ success: false, message: "Password must be at least 3 characters long" });
+    }else if (username.length < 3) {
+      return res.json({ success: false, message: "Username must be at least 3 characters long" });
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -49,7 +53,7 @@ app.post("/register", async (req, res) => {
     });
 
     if (existingUser) {
-      return res.json({ success: false });
+      return res.json({ success: false, message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -73,7 +77,11 @@ app.post("/login", async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.json({ success: false });
+      return res.json({ success: false, message: "All fields are required" });
+    }else if(password.length < 3) {
+      return res.json({ success: false, message: "Password must be at least 3 characters long" });
+    }else if(username.length < 3) {
+      return res.json({ success: false, message: "Username must be at least 3 characters long" });
     }
 
     const user = await prisma.user.findUnique({
@@ -81,13 +89,13 @@ app.post("/login", async (req, res) => {
     });
 
     if (!user) {
-      return res.json({ success: false });
+      return res.json({ success: false, message: "User not found" });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
-      return res.json({ success: false });
+      return res.json({ success: false, message: "Invalid password" });
     }
 
     return res.json({
@@ -96,7 +104,7 @@ app.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    return res.status(500).json({ success: false });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
@@ -123,13 +131,12 @@ app.delete("/delete-user", async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     console.log(err);
-    return res.status(500).json({ success: false });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
 app.delete("/delete-all-users", async (req, res) => {
   try {
-    // deleteMany() fără niciun filtru (unde {}) șterge TOT din tabel
     const result = await prisma.user.deleteMany({});
 
     return res.json({
@@ -163,6 +170,16 @@ app.post("/create-team", async (req, res) => {
       success: false,
       message: "Missing teamName, userId, password, or colorHex",
     });
+  }else if (normalizedPassword.length < 5) {
+    return res.json({
+      success: false,
+      message: "Password must be at least 5 characters long",
+    });
+  }else if (normalizedTeamName.length < 3) {
+    return res.json({
+      success: false,
+      message: "Team name must be at least 3 characters long",
+    });
   }
 
   try {
@@ -175,7 +192,6 @@ app.post("/create-team", async (req, res) => {
         throw new Error("USER_NOT_FOUND");
       }
 
-      // Creăm echipa
       const inviteCode = await generateUniqueInviteCode(tx);
       const newTeam = await tx.team.create({
         data: {
@@ -186,7 +202,6 @@ app.post("/create-team", async (req, res) => {
         },
       });
 
-      // Actualizăm user-ul
       await tx.user.update({
         where: { id: parsedUserId },
         data: { teamId: newTeam.id },
@@ -195,7 +210,6 @@ app.post("/create-team", async (req, res) => {
       return newTeam;
     });
 
-    // MODIFICAREA AICI: Folosim res.json() pentru a trimite datele inapoi la telefon
     return res.json({
       success: true,
       teamId: result.id,
@@ -217,7 +231,6 @@ app.post("/create-team", async (req, res) => {
         .json({ success: false, message: "Numele echipei este deja folosit." });
     }
 
-    // Dacă numele echipei există deja, Prisma va arunca o eroare aici
     return res.status(500).json({
       success: false,
       message: "Echipa există deja sau eroare server.",
@@ -232,6 +245,16 @@ app.post("/join-team", async (req, res) => {
     return res.status(400).json({
       success: false,
       message: "Missing teamName, password or userId",
+    });
+  }else if (password.length < 5) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 5 characters long",
+    });
+  }else if (teamName.length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: "Team name must be at least 3 characters long",
     });
   }
 
@@ -461,11 +484,13 @@ app.get("/user/:userId", async (req, res) => {
       include: { team: true },
     });
 
-    if (!user) return res.json({ success: false, message: "User not found" });
+    if (!user) {return res.json({ success: false, message: "User not found" });}
+    else if (user.username.length < 3) {
+      return res.json({ success: false, message: "Username must be at least 3 characters long" });
+    }
 
     let teamInviteCode = user.team?.inviteCode || null;
 
-    // Backfill pentru echipe create înainte de inviteCode.
     if (user.team && !teamInviteCode) {
       teamInviteCode = await generateUniqueInviteCode(prisma);
       await prisma.team.update({
