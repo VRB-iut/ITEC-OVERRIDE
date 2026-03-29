@@ -2,10 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera"; // Import nou
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,8 +21,28 @@ export default function ProfileContainer() {
   const [showQRMenu, setShowQRMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false); // State pentru a opri scanarea repetată
+  const [joinMessage, setJoinMessage] = useState(null);
+  const [joinMessageType, setJoinMessageType] = useState("info");
+  const joinMessageOpacity = useRef(new Animated.Value(0)).current;
   const [permission, requestPermission] = useCameraPermissions();
   const router = useRouter();
+
+  const showJoinMessage = (message, type = "info") => {
+    setJoinMessage(message);
+    setJoinMessageType(type);
+    joinMessageOpacity.setValue(1);
+
+    Animated.sequence([
+      Animated.delay(2000),
+      Animated.timing(joinMessageOpacity, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setJoinMessage(null);
+    });
+  };
 
   useEffect(() => {
     fetchUserData();
@@ -99,14 +120,14 @@ export default function ProfileContainer() {
       const result = await response.json();
 
       if (result.success) {
-        Alert.alert("Succes", `Te-ai alăturat echipei ${result.teamName}!`);
+        showJoinMessage(`Te-ai alaturat echipei ${result.teamName}!`, "success");
         setShowQRMenu(false);
         fetchUserData(); // Refresh date profil
       } else {
-        Alert.alert("Eroare", result.message || "Nu s-a putut face join.");
+        showJoinMessage(result.message || "Nu s-a putut face join.", "error");
       }
     } catch (error) {
-      Alert.alert("Eroare Scanare", "Codul QR nu este valid pentru echipe.");
+      showJoinMessage("Codul QR nu este valid pentru echipe.", "error");
     } finally {
       // Asteptam putin inainte de a permite o alta scanare
       setTimeout(() => setScanning(false), 2000);
@@ -125,11 +146,28 @@ export default function ProfileContainer() {
   };
 
   return (
-    <View style={styles.cardContainer}>
-      {loading ? (
-        <ActivityIndicator size="large" color={COLOR.primary} />
-      ) : (
-        <>
+    <>
+      {joinMessage ? (
+        <View style={styles.joinMessageOverlay} pointerEvents="none">
+          <Animated.View
+            style={[
+              styles.joinMessage,
+              joinMessageType === "success"
+                ? styles.joinMessageSuccess
+                : styles.joinMessageError,
+              { opacity: joinMessageOpacity },
+            ]}
+          >
+            <Text style={styles.joinMessageText}>{joinMessage}</Text>
+          </Animated.View>
+        </View>
+      ) : null}
+
+      <View style={styles.cardContainer}>
+        {loading ? (
+          <ActivityIndicator size="large" color={COLOR.primary} />
+        ) : (
+          <>
           <View style={styles.headerSection}>
             <View style={styles.textGroup}>
               <Text style={styles.label}>PROFIL UTILIZATOR</Text>
@@ -248,9 +286,10 @@ export default function ProfileContainer() {
               <Text style={styles.statValue}>{data?.WLratio ?? "0.00"}</Text>
             </View>
           </View>
-        </>
-      )}
-    </View>
+          </>
+        )}
+      </View>
+    </>
   );
 }
 
@@ -349,6 +388,33 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginTop: 2,
+  },
+  joinMessageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  joinMessage: {
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    maxWidth: "85%",
+    borderWidth: 1,
+  },
+  joinMessageSuccess: {
+    backgroundColor: "rgba(46, 125, 50, 0.2)",
+    borderColor: "rgba(76, 175, 80, 0.8)",
+  },
+  joinMessageError: {
+    backgroundColor: "rgba(183, 28, 28, 0.2)",
+    borderColor: "rgba(244, 67, 54, 0.8)",
+  },
+  joinMessageText: {
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "700",
   },
   teamSection: { marginBottom: 20, marginTop: 5 },
   teamBadge: {
