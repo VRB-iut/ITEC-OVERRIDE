@@ -192,7 +192,7 @@ export default function ProfileContainer() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => router.replace("/LogInScreen")}
+                onPress={() => {AsyncStorage.removeItem('userId'); router.replace("/LogInScreen")}}
                 style={styles.iconButton}
               >
                 <Ionicons name="log-out-outline" size={20} color="#F44336" />

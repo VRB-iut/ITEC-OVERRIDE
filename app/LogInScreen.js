@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderColor: COLOR.primary,
     backgroundColor: "#fafafa07",
+    color: "#fff",
   },
   confirmPasswordInput: {
     marginTop: "10%",
@@ -261,6 +262,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderColor: COLOR.primary,
     backgroundColor: "#fafafa07",
+    color: "#fff",
   },
   accountCreatedText: {
     position: "absolute",
