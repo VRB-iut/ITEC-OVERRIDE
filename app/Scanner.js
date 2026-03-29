@@ -117,7 +117,7 @@ export default function Scanner() {
       )}
 
       {showCanvas && currentPoster && (
-        <View style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]}>
           <DrawingCanvas
             posterName={currentPoster}
             initialStrokes={savedDrawings[currentPoster]}
